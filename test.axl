@@ -1,0 +1,7 @@
+set foo fn (
+  set a arg
+  set b arg
+  add a b
+)
+
+puts (foo 2 2)

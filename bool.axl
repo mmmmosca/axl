@@ -1,0 +1,8 @@
+puts true
+puts false
+puts (and true false)
+puts (or true false)
+if true (puts 42)
+if false (puts 99)
+puts (eq true true)
+puts (neq true false)

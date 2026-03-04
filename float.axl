@@ -1,0 +1,3 @@
+puts (add 1.5 .25)
+puts (div 5 2)
+puts (set x .5)

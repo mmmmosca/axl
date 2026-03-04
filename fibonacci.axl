@@ -1,0 +1,22 @@
+set fibonacci fn (
+    set n arg
+    set result 0
+    set last 1
+    set secondLast 0
+    
+    if (eq n 1) (secondLast)
+    if (eq n 2) (last)
+    if (gq n 3) (
+        times (sub n 2) (
+            set result (add secondLast last)
+            set secondLast last
+            set last result
+        )
+    )
+
+    result
+)
+
+puts (fibonacci 8)
+puts (fibonacci 7)
+puts (fibonacci 4)

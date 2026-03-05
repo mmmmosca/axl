@@ -1,4 +1,9 @@
 # An Expression Language
+
+<div align="center">
+<img src="https://github.com/mmmmosca/axl/blob/f7766736e170203f1a58523671467eea2708a010/logo.png" width="400" height="400">
+</div>
+
 An Expression Language (AXL) is an expression based programming language.
 
 Everything in AXL (except for the instructions for input and output) returns a value of some sort, meaning that all of the different operations (which are themselves expressions) can be concatenated.

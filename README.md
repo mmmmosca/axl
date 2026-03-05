@@ -4,13 +4,17 @@
 <img src="https://github.com/mmmmosca/axl/blob/f7766736e170203f1a58523671467eea2708a010/logo.png" width="400" height="400">
 </div>
 
-An Expression Language (AXL) is an expression based programming language.
+## Next milestones
+- Lists
+- Embedding inside other languages
+
+An Expression Language (AXL) is an expression based programming language that can be used for scripting.
 
 Everything in AXL (except for the instructions for input and output) returns a value of some sort, meaning that all of the different operations (which are themselves expressions) can be concatenated.
 
 ## Defining an expression
 Anything enclosed bewteen `(` and `)` is treated as an expression.
-An expression can return either an integer, a floating point number, a boolean or a function and return the last value inserted.
+An expression can return either an integer, a floating point number (both integers and floats can be either positive or negative), a boolean, a string or a function and returns the last value inserted.
 
 For example the following expression will return `2`:
 ```
@@ -68,4 +72,14 @@ puts (foo 1 1)
 ```
 
 Here the function foo takes in two arguments that are stored in the variables a and b.
-Then we return the result of the sum of the two variables, which in this case is `2`
+Then we return the result of the sum of the two variables, which in this case is `2`.
+
+Normally a function returns the last expression it's written inside, but you can explicitally tell the function to return with the 
+`return` expression.
+
+## Strings
+Any text enclosed between `"` is treated as a string literal.
+You can concatenate strings with the `concat` expression, which returns a string:
+```
+concat <string_1> <string_2>
+```

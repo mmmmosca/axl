@@ -1,0 +1,6 @@
+set makeAdder fn (
+  set x arg
+  fn (add x arg)
+)
+puts (makeAdder 5)
+puts ((makeAdder 5) 10)

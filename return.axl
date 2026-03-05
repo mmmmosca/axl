@@ -1,0 +1,8 @@
+set f fn (
+  set n arg
+  if (eq n 0) (return 42)
+  add n 1
+)
+
+puts (f 0)
+puts (f 5)

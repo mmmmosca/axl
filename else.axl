@@ -1,0 +1,3 @@
+if true (puts "T") else (puts "F")
+if false (puts "X") else (puts "OK")
+if true (puts "only-if")

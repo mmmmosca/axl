@@ -1,3 +1,5 @@
+module interpreter.interpreter;
+
 import std.stdio;
 import std.file : readText;
 import std.path : extension;
@@ -6,6 +8,7 @@ import std.conv : to;
 import std.exception : enforce;
 import std.variant : Algebraic;
 import std.string : strip, chomp;
+import std.uni : toLower;
 import core.stdc.stdlib : exit;
 
 enum string EXPR = "EXPR";
@@ -16,6 +19,7 @@ enum string DIV = "DIV";
 enum string SET = "SET";
 enum string TIMES = "TIMES";
 enum string IF = "IF";
+enum string ELSE = "ELSE";
 enum string LOOP = "LOOP";
 enum string BREAK = "BREAK";
 enum string GT = "GT";
@@ -27,12 +31,15 @@ enum string NEQ = "NEQ";
 enum string AND = "AND";
 enum string OR = "OR";
 enum string NOT = "NOT";
+enum string CONCAT = "CONCAT";
 enum string PUTS = "PUTS";
 enum string GETS = "GETS";
 enum string ARG = "ARG";
 enum string FN = "FN";
 enum string TRUE = "TRUE";
 enum string FALSE = "FALSE";
+enum string RETURN = "RETURN";
+enum string STRING = "STRING";
 
 abstract class Token {}
 
@@ -49,6 +56,11 @@ final class NumToken : Token {
 final class FloatToken : Token {
     double value;
     this(double value) { this.value = value; }
+}
+
+final class StringToken : Token {
+    string value;
+    this(string value) { this.value = value; }
 }
 
 final class IdToken : Token {
@@ -80,7 +92,7 @@ final class FunctionValue {
     }
 }
 
-alias Value = Algebraic!(long, double, bool, FunctionValue);
+alias Value = Algebraic!(long, double, bool, string, FunctionValue);
 
 final class Env {
     private Value[string] values;
@@ -140,6 +152,14 @@ final class BreakSignal : Exception {
     }
 }
 
+final class ReturnSignal : Exception {
+    Value value;
+    this(Value value) {
+        super("return");
+        this.value = value;
+    }
+}
+
 bool startsWithAt(string code, size_t i, string pattern) {
     if (i + pattern.length > code.length) {
         return false;
@@ -152,7 +172,11 @@ bool matchesKeyword(string code, size_t i, string kw) {
         return false;
     }
     auto j = i + kw.length;
-    return j >= code.length || !isAlpha(code[j]);
+    if (j >= code.length) {
+        return true;
+    }
+    auto c = code[j];
+    return !(isAlpha(c) || isDigit(c) || c == '_');
 }
 
 long valueAsLong(Value v) {
@@ -193,6 +217,9 @@ bool valueAsBool(Value v) {
     if (v.peek!double) {
         return v.get!double != 0.0;
     }
+    if (v.peek!string) {
+        return v.get!string.length != 0;
+    }
     writeln("ERROR: Expected boolean value");
     exit(1);
 }
@@ -207,6 +234,9 @@ string valueToString(Value v) {
     if (v.peek!bool) {
         return v.get!bool ? "true" : "false";
     }
+    if (v.peek!string) {
+        return v.get!string;
+    }
     return "<function>";
 }
 
@@ -218,10 +248,16 @@ Token[] tokenize(string code) {
         if (code[i] == '(') {
             size_t j = i + 1;
             int depth = 1;
+            bool inString = false;
             while (j < code.length && depth > 0) {
-                if (code[j] == '(') {
+                if (code[j] == '"') {
+                    inString = !inString;
+                    j++;
+                    continue;
+                }
+                if (!inString && code[j] == '(') {
                     depth++;
-                } else if (code[j] == ')') {
+                } else if (!inString && code[j] == ')') {
                     depth--;
                 }
                 j++;
@@ -253,6 +289,9 @@ Token[] tokenize(string code) {
         } else if (matchesKeyword(code, i, "if")) {
             tokensOut ~= new KeywordToken(IF);
             i += 2;
+        } else if (matchesKeyword(code, i, "else")) {
+            tokensOut ~= new KeywordToken(ELSE);
+            i += 4;
         } else if (matchesKeyword(code, i, "loop")) {
             tokensOut ~= new KeywordToken(LOOP);
             i += 4;
@@ -292,6 +331,9 @@ Token[] tokenize(string code) {
         } else if (matchesKeyword(code, i, "not")) {
             tokensOut ~= new KeywordToken(NOT);
             i += 3;
+        } else if (matchesKeyword(code, i, "concat")) {
+            tokensOut ~= new KeywordToken(CONCAT);
+            i += 6;
         } else if (matchesKeyword(code, i, "puts")) {
             tokensOut ~= new KeywordToken(PUTS);
             i += 4;
@@ -307,6 +349,9 @@ Token[] tokenize(string code) {
         } else if (matchesKeyword(code, i, "false")) {
             tokensOut ~= new KeywordToken(FALSE);
             i += 5;
+        } else if (matchesKeyword(code, i, "return")) {
+            tokensOut ~= new KeywordToken(RETURN);
+            i += 6;
         } else if (matchesKeyword(code, i, "fn")) {
             size_t k = i + 2;
             while (k < code.length && isWhite(code[k])) {
@@ -319,10 +364,16 @@ Token[] tokenize(string code) {
 
             size_t j = k + 1;
             int depth = 1;
+            bool inString = false;
             while (j < code.length && depth > 0) {
-                if (code[j] == '(') {
+                if (code[j] == '"') {
+                    inString = !inString;
+                    j++;
+                    continue;
+                }
+                if (!inString && code[j] == '(') {
                     depth++;
-                } else if (code[j] == ')') {
+                } else if (!inString && code[j] == ')') {
                     depth--;
                 }
                 j++;
@@ -334,9 +385,16 @@ Token[] tokenize(string code) {
 
             tokensOut ~= new FnToken(tokenize(code[k + 1 .. j - 1]));
             i = j;
-        } else if (isDigit(code[i]) || (code[i] == '.' && i + 1 < code.length && isDigit(code[i + 1]))) {
+        } else if (
+            isDigit(code[i])
+            || (code[i] == '.' && i + 1 < code.length && isDigit(code[i + 1]))
+            || (code[i] == '-' && i + 1 < code.length && (isDigit(code[i + 1]) || (code[i + 1] == '.' && i + 2 < code.length && isDigit(code[i + 2]))))
+        ) {
             size_t j = i;
             bool sawDot = false;
+            if (code[j] == '-') {
+                j++;
+            }
             while (j < code.length) {
                 if (isDigit(code[j])) {
                     j++;
@@ -360,9 +418,20 @@ Token[] tokenize(string code) {
                 tokensOut ~= new NumToken(to!long(literal));
             }
             i = j;
-        } else if (isAlpha(code[i])) {
+        } else if (code[i] == '"') {
+            size_t j = i + 1;
+            while (j < code.length && code[j] != '"') {
+                j++;
+            }
+            if (j >= code.length) {
+                writeln("ERROR: Unclosed string literal, did you forget a '\"'?");
+                exit(1);
+            }
+            tokensOut ~= new StringToken(code[i + 1 .. j]);
+            i = j + 1;
+        } else if (isAlpha(code[i]) || code[i] == '_') {
             size_t j = i;
-            while (j < code.length && isAlpha(code[j])) {
+            while (j < code.length && (isAlpha(code[j]) || isDigit(code[j]) || code[j] == '_')) {
                 j++;
             }
             tokensOut ~= new IdToken(code[i .. j]);
@@ -401,7 +470,11 @@ Value evalToken(Token tok, Env env) {
                 } else {
                     callEnv.setCallArgs(argValues);
                 }
-                return parse(fn.body, callEnv);
+                try {
+                    return parse(fn.body, callEnv);
+                } catch (ReturnSignal r) {
+                    return r.value;
+                }
             }
         }
         return parse(expr.items, env);
@@ -412,6 +485,9 @@ Value evalToken(Token tok, Env env) {
     }
     if (auto f = cast(FloatToken) tok) {
         return Value(f.value);
+    }
+    if (auto s = cast(StringToken) tok) {
+        return Value(s.value);
     }
 
     if (auto id = cast(IdToken) tok) {
@@ -446,8 +522,19 @@ Value evalToken(Token tok, Env env) {
 
     if (auto kw = cast(KeywordToken) tok) {
         if (kw.name == GETS) {
-            auto line = chomp(readln());
-            return Value(to!double(strip(line)));
+            auto line = strip(chomp(readln()));
+            auto lowered = toLower(line);
+            if (lowered == "true") {
+                return Value(true);
+            }
+            if (lowered == "false") {
+                return Value(false);
+            }
+            try {
+                return Value(to!double(line));
+            } catch (Exception) {
+                return Value(line);
+            }
         }
         if (kw.name == ARG) {
             return env.consumeArg();
@@ -490,11 +577,15 @@ Value parse(Token[] tokenList, Env env) {
 
         if (isKeyword(tok, IF)) {
             enforce(i + 2 < tokenList.length, "ERROR: if expects <cond> <expr>");
+            bool hasElse = i + 4 < tokenList.length && isKeyword(tokenList[i + 3], ELSE);
             if (valueAsBool(evalToken(tokenList[i + 1], env))) {
                 result = evalToken(tokenList[i + 2], env);
                 hasResult = true;
+            } else if (hasElse) {
+                result = evalToken(tokenList[i + 4], env);
+                hasResult = true;
             }
-            i += 3;
+            i += hasElse ? 5 : 3;
             continue;
         }
 
@@ -528,7 +619,7 @@ Value parse(Token[] tokenList, Env env) {
         }
 
         string op;
-        foreach (candidate; [ADD, SUB, MUL, DIV, GT, LT, GTE, LTE, EQ, NEQ, AND, OR]) {
+        foreach (candidate; [ADD, SUB, MUL, DIV, GT, LT, GTE, LTE, EQ, NEQ, AND, OR, CONCAT]) {
             if (isKeyword(tok, candidate)) {
                 op = candidate;
                 break;
@@ -562,12 +653,16 @@ Value parse(Token[] tokenList, Env env) {
             } else if (op == EQ) {
                 if ((a.peek!long || a.peek!double || a.peek!bool) && (b.peek!long || b.peek!double || b.peek!bool)) {
                     result = Value(valueAsDouble(a) == valueAsDouble(b));
+                } else if (a.peek!string && b.peek!string) {
+                    result = Value(a.get!string == b.get!string);
                 } else {
                     result = Value(false);
                 }
             } else if (op == NEQ) {
                 if ((a.peek!long || a.peek!double || a.peek!bool) && (b.peek!long || b.peek!double || b.peek!bool)) {
                     result = Value(valueAsDouble(a) != valueAsDouble(b));
+                } else if (a.peek!string && b.peek!string) {
+                    result = Value(a.get!string != b.get!string);
                 } else {
                     result = Value(true);
                 }
@@ -575,6 +670,13 @@ Value parse(Token[] tokenList, Env env) {
                 result = Value(valueAsBool(a) && valueAsBool(b));
             } else if (op == OR) {
                 result = Value(valueAsBool(a) || valueAsBool(b));
+            } else if (op == CONCAT) {
+                if (a.peek!string && b.peek!string) {
+                    result = Value(a.get!string ~ b.get!string);
+                } else {
+                    writeln("ERROR: Cannot concatenate two non-string literals");
+                    exit(1);
+                }
             }
 
             hasResult = true;
@@ -588,6 +690,16 @@ Value parse(Token[] tokenList, Env env) {
             hasResult = true;
             i += 2;
             continue;
+        }
+
+        if (isKeyword(tok, ELSE)) {
+            writeln("ERROR: 'else' without matching 'if'");
+            exit(1);
+        }
+
+        if (isKeyword(tok, RETURN)) {
+            enforce(i + 1 < tokenList.length, "ERROR: return expects one expression");
+            throw new ReturnSignal(evalToken(tokenList[i + 1], env));
         }
 
         if (isKeyword(tok, PUTS)) {
@@ -629,5 +741,10 @@ void main(string[] args) {
     auto source = readText(path);
     auto tokens = tokenize(source);
     auto globalEnv = new Env();
-    parse(tokens, globalEnv);
+    try {
+        parse(tokens, globalEnv);
+    } catch (ReturnSignal _) {
+        writeln("ERROR: return can only be used inside a function");
+        exit(1);
+    }
 }

@@ -11,6 +11,8 @@ Everything in AXL (except for the instructions for input and output) returns a v
 ## Next milestones
 - Lists
 - Embedding inside other languages
+- File reading
+- modules
 
 ## Defining an expression
 Anything enclosed bewteen `(` and `)` is treated as an expression.

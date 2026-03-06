@@ -1,7 +1,7 @@
 # An Expression Language
 
 <div align="center">
-<img src="https://github.com/mmmmosca/axl/blob/f7766736e170203f1a58523671467eea2708a010/logo.png" width="400" height="400">
+<img src="https://github.com/mmmmosca/axl/blob/c806823d994f6a531cbb9b269135fcbe7b882759/logo.png" width="400" height="400">
 </div>
 
 An Expression Language (AXL) is an expression based programming language that can be used for scripting.

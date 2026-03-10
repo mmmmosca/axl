@@ -9,10 +9,10 @@ An Expression Language (AXL) is an expression based programming language that ca
 Everything in AXL (except for the instructions for input and output) returns a value of some sort, meaning that all of the different operations (which are themselves expressions) can be concatenated.
 
 ## Next milestones
-- Lists
-- Embedding inside other languages
+- ~~Lists~~
 - File reading
 - modules
+- Embedding inside other languages
 
 ## Defining an expression
 Anything enclosed bewteen `(` and `)` is treated as an expression.

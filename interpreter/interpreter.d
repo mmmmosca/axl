@@ -40,6 +40,13 @@ enum string TRUE = "TRUE";
 enum string FALSE = "FALSE";
 enum string RETURN = "RETURN";
 enum string STRING = "STRING";
+enum string LIST = "LIST";
+enum string ELEMENT = "ELEMENT";
+enum string LEN = "LEN";
+enum string MAP = "MAP";
+enum string TOSTR = "TOSTR";
+enum string TONUM = "TONUM";
+enum string TOLIST = "TOLIST";
 
 abstract class Token {}
 
@@ -78,6 +85,11 @@ final class FnToken : Token {
     this(Token[] body) { this.body = body; }
 }
 
+final class ListToken : Token {
+    Token[] items;
+    this(Token[] items) { this.items = items; }
+}
+
 final class FunctionValue {
     Token[] body;
     Env closure;
@@ -92,7 +104,13 @@ final class FunctionValue {
     }
 }
 
-alias Value = Algebraic!(long, double, bool, string, FunctionValue);
+
+
+class ListValue {
+    Value[] items;
+    this(Value[] items) { this.items = items; }
+}
+alias Value = Algebraic!(long, double, bool, string, FunctionValue, ListValue);
 
 final class Env {
     private Value[string] values;
@@ -236,6 +254,18 @@ string valueToString(Value v) {
     }
     if (v.peek!string) {
         return v.get!string;
+    }
+    if (v.peek!ListValue) {
+        auto lv = v.get!ListValue;
+        string buf = "[";
+        foreach (idx, item; lv.items) {
+            if (idx > 0) {
+                buf ~= ", ";
+            }
+            buf ~= valueToString(item);
+        }
+        buf ~= "]";
+        return buf;
     }
     return "<function>";
 }
@@ -385,7 +415,59 @@ Token[] tokenize(string code) {
 
             tokensOut ~= new FnToken(tokenize(code[k + 1 .. j - 1]));
             i = j;
-        } else if (
+                } else if (matchesKeyword(code, i, "list")) {
+            size_t k = i + 4;
+            while (k < code.length && isWhite(code[k])) {
+                k++;
+            }
+            if (k >= code.length || code[k] != '(') {
+                tokensOut ~= new IdToken("list");
+                i += 4;
+                continue;
+            }
+
+            size_t j = k + 1;
+            int depth = 1;
+            bool inString = false;
+            while (j < code.length && depth > 0) {
+                if (code[j] == '"') {
+                    inString = !inString;
+                    j++;
+                    continue;
+                }
+                if (!inString && code[j] == '(') {
+                    depth++;
+                } else if (!inString && code[j] == ')') {
+                    depth--;
+                }
+                j++;
+            }
+            if (depth != 0) {
+                writeln("ERROR: Unclosed list expression, did you forget a ')'? ");
+                exit(1);
+            }
+
+            tokensOut ~= new ListToken(tokenize(code[k + 1 .. j - 1]));
+            i = j;
+        } else if (matchesKeyword(code, i, "element")) {
+            tokensOut ~= new KeywordToken(ELEMENT);
+            i += 7;
+        } else if (matchesKeyword(code, i, "len")) {
+            tokensOut ~= new KeywordToken(LEN);
+            i += 3;
+        } else if (matchesKeyword(code, i, "map")) {
+            tokensOut ~= new KeywordToken(MAP);
+            i += 3;
+        } else if (matchesKeyword(code, i, "tostr")) {
+            tokensOut ~= new KeywordToken(TOSTR);
+            i += 5;
+        } else if (matchesKeyword(code, i, "tonum")) {
+            tokensOut ~= new KeywordToken(TONUM);
+            i += 5;
+        } else if (matchesKeyword(code, i, "tolist")) {
+            tokensOut ~= new KeywordToken(TOLIST);
+            i += 6;
+} else if (
             isDigit(code[i])
             || (code[i] == '.' && i + 1 < code.length && isDigit(code[i + 1]))
             || (code[i] == '-' && i + 1 < code.length && (isDigit(code[i + 1]) || (code[i + 1] == '.' && i + 2 < code.length && isDigit(code[i + 2]))))
@@ -488,6 +570,14 @@ Value evalToken(Token tok, Env env) {
     }
     if (auto s = cast(StringToken) tok) {
         return Value(s.value);
+    }
+
+    if (auto listTok = cast(ListToken) tok) {
+        Value[] items;
+        foreach (t; listTok.items) {
+            items ~= evalToken(t, env);
+        }
+        return Value(new ListValue(items));
     }
 
     if (auto id = cast(IdToken) tok) {
@@ -673,6 +763,10 @@ Value parse(Token[] tokenList, Env env) {
             } else if (op == CONCAT) {
                 if (a.peek!string && b.peek!string) {
                     result = Value(a.get!string ~ b.get!string);
+                } else if (a.peek!ListValue && b.peek!ListValue) {
+                    auto left = a.get!ListValue;
+                    auto right = b.get!ListValue;
+                    result = Value(new ListValue(left.items ~ right.items));
                 } else {
                     writeln("ERROR: Cannot concatenate two non-string literals");
                     exit(1);
@@ -684,9 +778,124 @@ Value parse(Token[] tokenList, Env env) {
             continue;
         }
 
+        if (isKeyword(tok, ELEMENT)) {
+            enforce(i + 2 < tokenList.length, "ERROR: element expects <list> <index>");
+            auto lstVal = evalToken(tokenList[i + 1], env);
+            auto idxVal = evalToken(tokenList[i + 2], env);
+            if (!lstVal.peek!ListValue) {
+                writeln("ERROR: element expects a list");
+                exit(1);
+            }
+            auto lst = lstVal.get!ListValue;
+            auto idx = valueAsLong(idxVal);
+            if (idx < 0 || cast(size_t) idx >= lst.items.length) {
+                writeln("ERROR: element index out of range");
+                exit(1);
+            }
+            result = lst.items[cast(size_t) idx];
+            hasResult = true;
+            i += 3;
+            continue;
+        }
+
+        if (isKeyword(tok, LEN)) {
+            enforce(i + 1 < tokenList.length, "ERROR: len expects a list");
+            auto lstVal = evalToken(tokenList[i + 1], env);
+            if (!lstVal.peek!ListValue) {
+                writeln("ERROR: len expects a list");
+                exit(1);
+            }
+            result = Value(cast(long) lstVal.get!ListValue.items.length);
+            hasResult = true;
+            i += 2;
+            continue;
+        }
+
+        if (isKeyword(tok, MAP)) {
+            enforce(i + 2 < tokenList.length, "ERROR: map expects a function and a list");
+            auto fnVal = evalToken(tokenList[i + 1], env);
+            auto lstVal = evalToken(tokenList[i + 2], env);
+            if (!fnVal.peek!FunctionValue) {
+                writeln("ERROR: map expects a function");
+                exit(1);
+            }
+            if (!lstVal.peek!ListValue) {
+                writeln("ERROR: map expects a list");
+                exit(1);
+            }
+            auto fn = fnVal.get!FunctionValue;
+            if (fn.hasExplicitParams && fn.params.length != 1) {
+                writeln("ERROR: map expects a function with one parameter");
+                exit(1);
+            }
+            Value[] mapped;
+            foreach (item; lstVal.get!ListValue.items) {
+                auto callEnv = new Env(fn.closure);
+                if (fn.hasExplicitParams) {
+                    callEnv.define(fn.params[0], item);
+                } else {
+                    callEnv.setCallArgs([item]);
+                }
+                try {
+                    mapped ~= parse(fn.body, callEnv);
+                } catch (ReturnSignal r) {
+                    mapped ~= r.value;
+                }
+            }
+            result = Value(new ListValue(mapped));
+            hasResult = true;
+            i += 3;
+            continue;
+        }
+
         if (isKeyword(tok, NOT)) {
             enforce(i + 1 < tokenList.length, "ERROR: not expects one operand");
             result = Value(!valueAsBool(evalToken(tokenList[i + 1], env)));
+            hasResult = true;
+            i += 2;
+            continue;
+        }
+
+        if (isKeyword(tok, TOSTR)) {
+            enforce(i + 1 < tokenList.length, "ERROR: tostr expects one expression");
+            result = Value(valueToString(evalToken(tokenList[i + 1], env)));
+            hasResult = true;
+            i += 2;
+            continue;
+        }
+
+        if (isKeyword(tok, TONUM)) {
+            enforce(i + 1 < tokenList.length, "ERROR: tonum expects one expression");
+            auto v = evalToken(tokenList[i + 1], env);
+            if (v.peek!string) {
+                try {
+                    result = Value(to!double(v.get!string));
+                } catch (Exception) {
+                    writeln("ERROR: tonum expects a numeric string");
+                    exit(1);
+                }
+            } else {
+                result = Value(valueAsDouble(v));
+            }
+            hasResult = true;
+            i += 2;
+            continue;
+        }
+
+        if (isKeyword(tok, TOLIST)) {
+            enforce(i + 1 < tokenList.length, "ERROR: tolist expects one expression");
+            auto v = evalToken(tokenList[i + 1], env);
+            if (v.peek!ListValue) {
+                result = v;
+            } else if (v.peek!string) {
+                Value[] items;
+                foreach (ch; v.get!string) {
+                    items ~= Value(to!string(ch));
+                }
+                result = Value(new ListValue(items));
+            } else {
+                result = Value(new ListValue([v]));
+            }
             hasResult = true;
             i += 2;
             continue;

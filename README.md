@@ -16,7 +16,7 @@ Everything in AXL (except for the instructions for input and output) returns a v
 
 ## Defining an expression
 Anything enclosed bewteen `(` and `)` is treated as an expression.
-An expression can return either an integer, a floating point number (both integers and floats can be either positive or negative), a boolean, a string or a function and returns the last value inserted.
+An expression can return either an integer, a floating point number (both integers and floats can be either positive or negative), a boolean, a string, a list or a function and returns the last value inserted.
 
 For example the following expression will return `2`:
 ```
@@ -85,3 +85,25 @@ You can concatenate strings with the `concat` expression, which returns a string
 ```
 concat <string_1> <string_2>
 ```
+
+## Lists
+Lists are a data structure that can contain any number of expressions.
+We can define a list with the `list` keyword:
+```
+list(...)
+```
+When defining a list be sure to separate each element in the list with a whitespace:
+```
+set nums list(1 2 3 4)
+```
+
+It is possible to manipulate and operate with lists with the following operations:
+- `len <list>`: returns the length of the given list
+- `element <list> <num>`: given a list and a number index, returns the value stored at that index
+- `concat <list> <list>`: it is possible to use `concat` also to concatenate two strings
+
+## Type conversion
+It's possible to convert a value to another type using these expressions:
+- `tostr <expr>`: converts a given expression to a string
+- `tonum <expr>`: converts a given expression to a number 
+- `tolist <expr>`: converts a given expression to a list

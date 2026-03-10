@@ -101,6 +101,7 @@ It is possible to manipulate and operate with lists with the following operation
 - `len <list>`: returns the length of the given list
 - `element <list> <num>`: given a list and a number index, returns the value stored at that index
 - `concat <list> <list>`: it is possible to use `concat` also to concatenate two strings
+- `map <function> <list>`: applies a given function to each element of a given list
 
 ## Type conversion
 It's possible to convert a value to another type using these expressions:

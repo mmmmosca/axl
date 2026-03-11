@@ -121,3 +121,9 @@ It's possible to convert a value to another type using these expressions:
 - `tostr <expr>`: converts a given expression to a string
 - `tonum <expr>`: converts a given expression to a number 
 - `tolist <expr>`: converts a given expression to a list
+
+## Importing other AXL files
+One can import other AXL files using the `import` expression, which returns the content of the file and evaluates them accordingly:
+```
+import <string path to an other AXL file>
+```

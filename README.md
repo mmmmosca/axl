@@ -55,7 +55,12 @@ set <id> <expr | function>
 ```
 
 ## I/O
-You can print to the standard output a value with the `puts` keyword (e.g. `puts 3`) or get user input with the `gets` keyword (which could be actually an expression as it returns a value, but since it deals with I/O it technically isn't, but it can be used as the value of a variable).
+You can print to the standard output a value with the `puts` keyword (e.g. `puts 3`) or get user input with the `gets` keyword (which could be actually an expression as it returns a value, but since it deals with I/O it technically isn't, but it can be used as the value of a variable):
+```
+puts <expr>
+
+gets
+```
 You can also read from files using the `readf` expression, which returns a list containing all the lines of the file as strings:
 ```
 readf <string path to file>

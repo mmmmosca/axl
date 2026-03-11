@@ -10,8 +10,8 @@ Everything in AXL (except for the instructions for input and output) returns a v
 
 ## Next milestones
 - ~~Lists~~
-- File reading
-- modules
+- ~~File reading/writing~~
+- ~~modules~~
 - Embedding inside other languages
 
 ## Defining an expression
@@ -42,6 +42,7 @@ Branching can be performed through the `if`, `loop` and `times` expressions.
 These can either return a value conditionally or iterate the same expression, either a determined or undetermined amouunt of times.
 
 - `if <cond> <expr>`: returns a value if the condition returns true
+- `else <expr>`: returns a value if the previous condition is false
 - `times <n_iterations> <expr>`: returns a value a definite amount of times
 - `loop <expr>`: returns indefinately a value; the loop can be broke with the `break` expression.
 
@@ -54,7 +55,18 @@ set <id> <expr | function>
 ```
 
 ## I/O
-You can print to the standard output a value with the `puts` keyword (e.g. `puts 3`) or get user input with the `gets` keyword (which could be actually an expression as it returns a value, but since it deals with I/O it technically isn't, but it can be used as the value of a variable)
+You can print to the standard output a value with the `puts` keyword (e.g. `puts 3`) or get user input with the `gets` keyword (which could be actually an expression as it returns a value, but since it deals with I/O it technically isn't, but it can be used as the value of a variable).
+You can also read from files using the `readf` expression, which returns a list containing all the lines of the file as strings:
+```
+readf <string path to file>
+```
+
+In a similar way you can also overwrite the contents of the file with `writef` and `appendf` that, like `puts`, aren't expressions:
+```
+writef <string path to file> <string to write>
+
+appendf <string path to file> <string to write>
+```
 
 ## Functions
 Functions can be defined as follows:
@@ -88,6 +100,7 @@ concat <string_1> <string_2>
 
 ## Lists
 Lists are a data structure that can contain any number of expressions.
+Strings are considered as a list of characters, therefore all the operations related to lists are also valid for strings
 We can define a list with the `list` keyword:
 ```
 list(...)
@@ -99,7 +112,7 @@ set nums list(1 2 3 4)
 
 It is possible to manipulate and operate with lists with the following operations:
 - `len <list>`: returns the length of the given list
-- `element <list> <num>`: given a list and a number index, returns the value stored at that index
+- `element <list> <num>`: given a list and a number index, returns the value stored at that index. 
 - `concat <list> <list>`: it is possible to use `concat` also to concatenate two strings
 - `map <function> <list>`: applies a given function to each element of a given list
 

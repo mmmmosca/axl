@@ -7,7 +7,7 @@ import std.ascii : isAlpha, isDigit, isWhite;
 import std.conv : to;
 import std.exception : enforce;
 import std.variant : Algebraic;
-import std.string : strip, chomp;
+import std.string : strip, chomp, startsWith, endsWith, splitLines;
 import std.uni : toLower;
 import core.stdc.stdlib : exit;
 
@@ -47,6 +47,10 @@ enum string MAP = "MAP";
 enum string TOSTR = "TOSTR";
 enum string TONUM = "TONUM";
 enum string TOLIST = "TOLIST";
+enum string IMPORT = "IMPORT";
+enum string READF = "READF";
+enum string WRITEF = "WRITEF";
+enum string APPENDF = "APPENDF";
 
 abstract class Token {}
 
@@ -467,10 +471,23 @@ Token[] tokenize(string code) {
         } else if (matchesKeyword(code, i, "tolist")) {
             tokensOut ~= new KeywordToken(TOLIST);
             i += 6;
-} else if (
+        } else if (matchesKeyword(code, i, "readf")) {
+            tokensOut ~= new KeywordToken(READF);
+            i += 5;
+        } else if (matchesKeyword(code, i, "writef")) {
+            tokensOut ~= new KeywordToken(WRITEF);
+            i += 6;
+        } else if (matchesKeyword(code, i, "appendf")) {
+            tokensOut ~= new KeywordToken(APPENDF);
+            i += 7;
+        } else if (matchesKeyword(code, i, "import")) {
+            tokensOut ~= new KeywordToken(IMPORT);
+            i += 6;
+	} else if (
             isDigit(code[i])
             || (code[i] == '.' && i + 1 < code.length && isDigit(code[i + 1]))
-            || (code[i] == '-' && i + 1 < code.length && (isDigit(code[i + 1]) || (code[i + 1] == '.' && i + 2 < code.length && isDigit(code[i + 2]))))
+            || (code[i] == '-' && i + 1 < code.length && (isDigit(code[i + 1]) || (code[i + 1] == '.' 
+            && i + 2 < code.length && isDigit(code[i + 2]))))
         ) {
             size_t j = i;
             bool sawDot = false;
@@ -502,14 +519,42 @@ Token[] tokenize(string code) {
             i = j;
         } else if (code[i] == '"') {
             size_t j = i + 1;
-            while (j < code.length && code[j] != '"') {
+            string buf = "";
+            while (j < code.length) {
+                auto ch = code[j];
+                if (ch == '"') {
+                    break;
+                }
+                if (ch == '\\') {
+                    if (j + 1 >= code.length) {
+                        writeln("ERROR: Unclosed string literal, did you forget a '\"'?");
+                        exit(1);
+                    }
+                    auto nxt = code[j + 1];
+                    if (nxt == 'n') {
+                        buf ~= '\n';
+                    } else if (nxt == 't') {
+                        buf ~= '\t';
+                    } else if (nxt == 'r') {
+                        buf ~= '\r';
+                    } else if (nxt == '"') {
+                        buf ~= '"';
+                    } else if (nxt == '\\') {
+                        buf ~= '\\';
+                    } else {
+                        buf ~= nxt;
+                    }
+                    j += 2;
+                    continue;
+                }
+                buf ~= ch;
                 j++;
             }
             if (j >= code.length) {
                 writeln("ERROR: Unclosed string literal, did you forget a '\"'?");
                 exit(1);
             }
-            tokensOut ~= new StringToken(code[i + 1 .. j]);
+            tokensOut ~= new StringToken(buf);
             i = j + 1;
         } else if (isAlpha(code[i]) || code[i] == '_') {
             size_t j = i;
@@ -901,6 +946,84 @@ Value parse(Token[] tokenList, Env env) {
             continue;
         }
 
+        if (isKeyword(tok, READF)) {
+            enforce(i + 1 < tokenList.length, "ERROR: readf expects a string containing a file path");
+            auto pathVal = evalToken(tokenList[i + 1], env);
+            if (!pathVal.peek!string) {
+                writeln("ERROR: readf expects a string containing a file path");
+                exit(1);
+            }
+            auto path = pathVal.get!string;
+            auto source = readText(path);
+            if (source.startsWith("\ufeff")) {
+                source = source[1 .. $];
+            }
+            Value[] linesOut;
+            foreach (line; splitLines(source)) {
+                linesOut ~= Value(line);
+            }
+            result = Value(new ListValue(linesOut));
+            hasResult = true;
+            i += 2;
+            continue;
+        }
+
+        if (isKeyword(tok, WRITEF)) {
+            enforce(i + 2 < tokenList.length, "ERROR: writef expects a string containing a file path and an expression to write");
+            auto pathVal = evalToken(tokenList[i + 1], env);
+            if (!pathVal.peek!string) {
+                writeln("ERROR: writef expects a string containing a file path");
+                exit(1);
+            }
+            auto path = pathVal.get!string;
+            auto content = valueToString(evalToken(tokenList[i + 2], env));
+            auto file = File(path, "w");
+            file.write(content);
+            result = Value(cast(long) content.length);
+            hasResult = true;
+            i += 3;
+            continue;
+        }
+
+        if (isKeyword(tok, APPENDF)) {
+            enforce(i + 2 < tokenList.length, "ERROR: appendf expects a string containing a file path and an expression to write");
+            auto pathVal = evalToken(tokenList[i + 1], env);
+            if (!pathVal.peek!string) {
+                writeln("ERROR: appendf expects a string containing a file path");
+                exit(1);
+            }
+            auto path = pathVal.get!string;
+            auto content = valueToString(evalToken(tokenList[i + 2], env));
+            auto file = File(path, "a");
+            file.write(content);
+            result = Value(cast(long) content.length);
+            hasResult = true;
+            i += 3;
+            continue;
+        }
+
+        if (isKeyword(tok, IMPORT)) {
+            enforce(i + 1 < tokenList.length, "ERROR: import expects a string containing a file path to an axl file");
+            auto pathVal = evalToken(tokenList[i + 1], env);
+            if (!pathVal.peek!string) {
+                writeln("ERROR: import expects a string containing a file path to an axl file");
+                exit(1);
+            }
+            auto path = pathVal.get!string;
+            if (!path.endsWith(".axl")) {
+                writeln("ERROR: Unrecognized file extension, please use only '.axl' files");
+                exit(1);
+            }
+
+            auto source = readText(path);
+            if (source.startsWith("\ufeff")) {
+                source = source[1 .. $];
+            }
+            auto importedTokens = tokenize(source);
+            tokenList = tokenList[0 .. i] ~ importedTokens ~ tokenList[i + 2 .. $];
+            continue;
+        }
+
         if (isKeyword(tok, ELSE)) {
             writeln("ERROR: 'else' without matching 'if'");
             exit(1);
@@ -948,6 +1071,9 @@ void main(string[] args) {
     }
 
     auto source = readText(path);
+    if (source.startsWith("\ufeff")) {
+        source = source[1 .. $];
+    }
     auto tokens = tokenize(source);
     auto globalEnv = new Env();
     try {

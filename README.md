@@ -77,7 +77,7 @@ appendf <string path to file> <string to write>
 Functions can be defined as follows:
 `fn ( ... )`
 
-Functions require to take at least one argument, which can be taken by using the `arg` expression; then they get substituted with the positional arguments you pass in your function.
+Functions can take arguments, which can be taken by using the `arg` expression; then they get substituted with the positional arguments you pass in your function.
 
 To demonstrate how a function works, here's a quick example:
 ```
@@ -95,6 +95,11 @@ Then we return the result of the sum of the two variables, which in this case is
 
 Normally a function returns the last expression it's written inside, but you can explicitally tell the function to return with the 
 `return` expression.
+
+To call a function, wrap in parethesis the name of the variable binded to that function along with any possible argument:
+```
+(<function name> <optional args>)
+```
 
 ## Strings
 Any text enclosed between `"` is treated as a string literal.

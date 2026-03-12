@@ -577,7 +577,7 @@ Value parse(Token[] tokenList, Env env);
 Value evalToken(Token tok, Env env) {
     if (auto expr = cast(ExprToken) tok) {
         bool headIsKeyword = expr.items.length > 0 && cast(KeywordToken) expr.items[0] !is null;
-        if (expr.items.length >= 2 && !headIsKeyword) {
+        if (expr.items.length >= 1 && !headIsKeyword) {
             auto callee = evalToken(expr.items[0], env);
             if (callee.peek!FunctionValue) {
                 auto fn = callee.get!FunctionValue;

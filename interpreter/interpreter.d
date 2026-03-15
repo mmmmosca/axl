@@ -16,6 +16,7 @@ enum string ADD = "ADD";
 enum string SUB = "SUB";
 enum string MUL = "MUL";
 enum string DIV = "DIV";
+enum string MOD = "MOD";
 enum string SET = "SET";
 enum string TIMES = "TIMES";
 enum string IF = "IF";
@@ -313,6 +314,9 @@ Token[] tokenize(string code) {
             i += 3;
         } else if (matchesKeyword(code, i, "div")) {
             tokensOut ~= new KeywordToken(DIV);
+            i += 3;
+        } else if (matchesKeyword(code, i, "mod")) {
+            tokensOut ~= new KeywordToken(MOD);
             i += 3;
         } else if (matchesKeyword(code, i, "set")) {
             tokensOut ~= new KeywordToken(SET);
@@ -754,7 +758,7 @@ Value parse(Token[] tokenList, Env env) {
         }
 
         string op;
-        foreach (candidate; [ADD, SUB, MUL, DIV, GT, LT, GTE, LTE, EQ, NEQ, AND, OR, CONCAT]) {
+        foreach (candidate; [ADD, SUB, MUL, DIV, MOD, GT, LT, GTE, LTE, EQ, NEQ, AND, OR, CONCAT]) {
             if (isKeyword(tok, candidate)) {
                 op = candidate;
                 break;
@@ -777,6 +781,8 @@ Value parse(Token[] tokenList, Env env) {
                 else result = Value(valueAsDouble(a) * valueAsDouble(b));
             } else if (op == DIV) {
                 result = Value(valueAsDouble(a) / valueAsDouble(b));
+            } else if (op == MOD) {
+                result = Value(valueAsDouble(a) % valueAsDouble(b));
             } else if (op == GT) {
                 result = Value(valueAsDouble(a) > valueAsDouble(b));
             } else if (op == LT) {

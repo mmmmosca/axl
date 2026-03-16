@@ -1,15 +1,37 @@
 #!/bin/sh
-
 set -e
 
-echo "Installing AXL..."
+echo "Installing AXL from source..."
 
-URL="https://github.com/mmmmosca/axl/releases/latest/download/axl"
+# Check for D compiler
+if ! command -v dmd >/dev/null 2>&1 && ! command -v ldc2 >/dev/null 2>&1; then
+  echo "Error: You need D compiler (dmd or ldc2) installed."
+  exit 1
+fi
 
-# Download the latest AXL binary
-curl -L "$URL" -o axl
+# Create temp dir
+TMP=$(mktemp -d)
+cd "$TMP"
+
+echo "Downloading AXL source..."
+curl -L -o axl.zip https://github.com/mmmmosca/axl/archive/refs/heads/main.zip
+unzip axl.zip
+cd axl-main/interpreter
+
+echo "Compiling..."
+# Try DMD first
+if command -v dmd >/dev/null 2>&1; then
+  dmd -O -release -inline axl.d -of=axl
+else
+  ldc2 -O3 -release axl.d -of=axl
+fi
 
 chmod +x axl
-sudo mv axl /usr/local/bin/axl
+sudo mv axl /usr/local/bin/
 
 echo "AXL installed successfully!"
+echo "Run it with: axl yourfile.axl"
+
+# Cleanup
+cd /
+rm -rf "$TMP"

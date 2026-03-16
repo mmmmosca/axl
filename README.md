@@ -37,6 +37,12 @@ AXL provides a series of operations (which are by definition expressions too) to
 - `and <expr1> <expr2>`: returns true if both the expressions return true
 - `or <expr1> <expr2>`: returns true if either one of the two expressions return true
 - `not <expr1>`: returns the opposite boolean of whatever boolean the expression returns
+- `eq <expr1> <expr2>`: returns `true` if the two expressions return the same result
+- `neq <expr1> <expr2>`: returns `true` if the two expression don't return the same result
+- `gt <expr1> <expr2>`: returns `true` if the first expression is greater than the second
+- `lt <expr1> <expr2>`: returns `true` if the first expression is less than the second
+- `gte <expr1> <expr2>`: returns `true` if the first expression is greater than or equals to the second
+- `lte <expr1> <expr2>`: returns `true` if the first expression is less than or equal to the second
 
 ## Branching
 Branching can be performed through the `if`, `loop` and `times` expressions.

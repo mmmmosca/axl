@@ -33,6 +33,7 @@ AXL provides a series of operations (which are by definition expressions too) to
 - `mul <expr1> <expr2>`: returns the multiplication between two expressions
 - `div <expr1> <expr2>`: returns the division between the first and the second expression
 - `mod <expr1> <expr2>`: returns the modulo between the first and the second expression
+- `pow <expr1> <expr2>`: returns the result of the first expression to the power of the second expression
 - `and <expr1> <expr2>`: returns true if both the expressions return true
 - `or <expr1> <expr2>`: returns true if either one of the two expressions return true
 - `not <expr1>`: returns the opposite boolean of whatever boolean the expression returns

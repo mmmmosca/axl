@@ -9,6 +9,7 @@ import std.exception : enforce;
 import std.variant : Algebraic;
 import std.string : strip, chomp, startsWith, endsWith, splitLines;
 import std.uni : toLower;
+import std.math : pow;
 import core.stdc.stdlib : exit;
 
 enum string EXPR = "EXPR";
@@ -17,6 +18,7 @@ enum string SUB = "SUB";
 enum string MUL = "MUL";
 enum string DIV = "DIV";
 enum string MOD = "MOD";
+enum string POW = "POW";
 enum string SET = "SET";
 enum string TIMES = "TIMES";
 enum string IF = "IF";
@@ -317,6 +319,9 @@ Token[] tokenize(string code) {
             i += 3;
         } else if (matchesKeyword(code, i, "mod")) {
             tokensOut ~= new KeywordToken(MOD);
+            i += 3;
+        } else if (matchesKeyword(code, i, "pow")) {
+            tokensOut ~= new KeywordToken(POW);
             i += 3;
         } else if (matchesKeyword(code, i, "set")) {
             tokensOut ~= new KeywordToken(SET);
@@ -758,7 +763,7 @@ Value parse(Token[] tokenList, Env env) {
         }
 
         string op;
-        foreach (candidate; [ADD, SUB, MUL, DIV, MOD, GT, LT, GTE, LTE, EQ, NEQ, AND, OR, CONCAT]) {
+        foreach (candidate; [ADD, SUB, MUL, DIV, MOD, POW, GT, LT, GTE, LTE, EQ, NEQ, AND, OR, CONCAT]) {
             if (isKeyword(tok, candidate)) {
                 op = candidate;
                 break;
@@ -783,6 +788,8 @@ Value parse(Token[] tokenList, Env env) {
                 result = Value(valueAsDouble(a) / valueAsDouble(b));
             } else if (op == MOD) {
                 result = Value(valueAsDouble(a) % valueAsDouble(b));
+            } else if (op == POW) {
+                result = Value(valueAsDouble(a) ^^ valueAsDouble(b));
             } else if (op == GT) {
                 result = Value(valueAsDouble(a) > valueAsDouble(b));
             } else if (op == LT) {
@@ -975,7 +982,8 @@ Value parse(Token[] tokenList, Env env) {
         }
 
         if (isKeyword(tok, WRITEF)) {
-            enforce(i + 2 < tokenList.length, "ERROR: writef expects a string containing a file path and an expression to write");
+            enforce(i + 2 < tokenList.length, 
+                "ERROR: writef expects a string containing a file path and an expression to write");
             auto pathVal = evalToken(tokenList[i + 1], env);
             if (!pathVal.peek!string) {
                 writeln("ERROR: writef expects a string containing a file path");
@@ -992,7 +1000,8 @@ Value parse(Token[] tokenList, Env env) {
         }
 
         if (isKeyword(tok, APPENDF)) {
-            enforce(i + 2 < tokenList.length, "ERROR: appendf expects a string containing a file path and an expression to write");
+            enforce(i + 2 < tokenList.length, 
+                "ERROR: appendf expects a string containing a file path and an expression to write");
             auto pathVal = evalToken(tokenList[i + 1], env);
             if (!pathVal.peek!string) {
                 writeln("ERROR: appendf expects a string containing a file path");

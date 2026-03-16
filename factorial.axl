@@ -1,13 +1,7 @@
 set fact fn (
     set n arg
-    set result 1
-    loop (
-        if (or (eq n 1) (eq n 0)) (break)
-        set result (mul result n)
-        set n (sub n 1)
-    )
-
-    result
+    if (or (eq n 1) (eq n 0)) (return 1)
+    return (mul n (fact (sub n 1)))
 )
 
 puts (fact 8)

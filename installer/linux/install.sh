@@ -21,9 +21,9 @@ cd axl-main/interpreter
 echo "Compiling..."
 # Try DMD first
 if command -v dmd >/dev/null 2>&1; then
-  dmd -O -release -inline axl.d -of=axl
+  dmd -O -release -inline interpreter.d -of=axl
 else
-  ldc2 -O3 -release axl.d -of=axl
+  ldc2 -O3 -release interpreter.d -of=axl
 fi
 
 chmod +x axl

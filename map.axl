@@ -1,0 +1,12 @@
+set times_two fn (
+    return (mul 2 arg)
+)
+
+set nums list()
+set i 0
+times 10 (
+    set i (add i 1)
+    set nums (concat nums (tolist i))
+)
+
+puts (map times_two nums)

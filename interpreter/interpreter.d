@@ -894,11 +894,13 @@ Value parse(Token[] tokenList, Env env) {
                 } else {
                     callEnv.setCallArgs([item]);
                 }
+                Value mappedValue;
                 try {
-                    mapped ~= parse(fn.body, callEnv);
+                    mappedValue = parse(fn.body, callEnv);
                 } catch (ReturnSignal r) {
-                    mapped ~= r.value;
+                    mappedValue = r.value;
                 }
+                mapped ~= mappedValue;
             }
             result = Value(new ListValue(mapped));
             hasResult = true;

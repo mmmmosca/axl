@@ -25,7 +25,7 @@ For example the following expression will return `2`:
 
 It is important to notice that an empty expression (e.g. `()`) will return nothing as there isn't nothing to return.
 
-## Operationg with expressions
+## Operating with expressions
 AXL provides a series of operations (which are by definition expressions too) to perform arithmetic or boolean operations, written in polish notation:
 
 - `add <expr1> <expr2>`: returns the addition between two expressions
